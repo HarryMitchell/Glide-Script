@@ -1,0 +1,135 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class controller : MonoBehaviour
+{
+    // Rigidbody
+    private Rigidbody rb;
+
+    // Stores which jump player can peform next - 0 = single, 1 = double
+    private int jumpType = 0;
+
+    // If the player is gliding
+    private bool gliding = false;
+
+    // If co-routine that controls gliding is running
+    bool glideRoutineRunning = false;
+
+    // The last called co-routine
+    private Coroutine lastRoutine;
+
+    // Is the player grounded
+    private bool grounded;
+
+    // Player's speed
+    private float speed = 5f;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        // Get the rigidbody
+        rb = GetComponent<Rigidbody>();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        // Jumping
+        Jumping();
+    }
+
+    // Controls the players jumping and gliding
+    private void Jumping()
+    {
+        // Check if player can single jump, and of the jump key is hit
+        if (jumpType == 0 && Input.GetKeyDown(KeyCode.Space) && grounded)
+        {
+            // Set the next jump to be a double jump
+            jumpType++;
+
+            // Add force so the player jumps
+            rb.AddForce(new Vector3(0, 250, 0));
+        }
+        // Else if the next jump is a double jump
+        else if (jumpType == 1)
+        {
+            // If jump key is pressed
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                // Increment jump type so we can't use it anymore
+                jumpType++;
+
+                // Add force so player jumps
+                rb.AddForce(new Vector3(0, 250, 0));
+
+                // Call co-routine that makes the player glide
+                lastRoutine = StartCoroutine(Gliding());
+            }
+        }
+
+        // If the gliding co-routine is running BUT the player releases the space bar
+        if (glideRoutineRunning == true && Input.GetKeyUp(KeyCode.Space))
+        {
+            // Cancel the co-routine, we don't want to glide
+            StopCoroutine(lastRoutine);
+
+            // The routine isn't running, so set this to false
+            glideRoutineRunning = false;
+
+            // We don't want to glide, stop doing that
+            gliding = false;
+        }
+
+        // If we are gliding
+        if (gliding)
+        {
+            // Set the player's velocity, this includes forward velocity and downward velocity
+            rb.velocity = new Vector3(2f, -0.1f, rb.velocity.z);
+
+            // If space is released
+            if (Input.GetKeyUp(KeyCode.Space))
+            {
+                // Stop gliding
+                gliding = false;
+
+                // Set the next jump type to a single
+                jumpType = 0;
+
+                // Push the player downward, out of the air
+                rb.AddForce(new Vector3(0, -5f, 0));
+            }
+        }
+    }
+
+    // Co-routine that controls the player's gliding
+    IEnumerator Gliding()
+    {
+        // The co-routine is running so set this to true so we can check if the co-routine is running in our other functions
+        glideRoutineRunning = true;
+
+        // We don't want to start gliding straight away: wait for half a second
+        yield return new WaitForSeconds(.5f);
+
+        // Set gliding to true
+        gliding = true;
+
+        // Co-routine has finished so set this to false
+        glideRoutineRunning = false;
+    }
+
+    // If player is on ground
+    private void OnCollisionEnter(Collision collision)
+    {
+        // Set grounded to true, and the next jump type to a single
+        grounded = true;
+        jumpType = 0;
+    }
+
+    //If player leaves the ground
+    private void OnCollisionExit(Collision collision)
+    {
+        // Set grounded to false so we can't jump infinitely
+        grounded = false;
+    }
+}
